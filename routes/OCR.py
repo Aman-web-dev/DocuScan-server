@@ -7,77 +7,34 @@ from PIL import Image
 import io
 import re
 from flask_cors import CORS
-
+import os
 
 
 app = Flask(__name__)
 CORS(app) 
 
-# Initialize Firebase Admin with Firebase credentials JSON
-cred = credentials.Certificate(r"C:\Users\amanz\Desktop\projects\DocuScan-server\routes\devlib-c6572-firebase-adminsdk-r9yhd-b8ee0e0e6b.json")
+# Get Firebase credentials from environment variables
+firebase_credentials = {
+    "type": "service_account",
+    "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+    "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+    "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),  # ensure newline handling
+    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+    "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+    "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
+    "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
+    "auth_provider_x509_cert_url": os.getenv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL"),
+    "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL")
+}
 
+# Initialize Firebase Admin SDK
+cred = credentials.Certificate(firebase_credentials)
 firebase_admin.initialize_app(cred, {
-    'storageBucket': 'devlib-c6572.appspot.com'
+    'storageBucket': os.getenv("FIREBASE_STORAGE_BUCKET")
 })
 
-
+# Initialize Firebase Storage Bucket
 bucket = storage.bucket()
-
-# @app.route('/upload_and_extract', methods=['POST'])
-# def upload_and_extract_file():
-#     try:
-#         print("Received a request at /upload_and_extract")  # Debug: route check
-
-#         # Check if 'file' is in request files
-#         if 'file' not in request.files:
-#             print("No file in request")  # Debug: missing file
-#             return jsonify({'error': 'No file provided'}), 400
-
-#         file = request.files['file']
-#         file_type = file.content_type
-#         print(f"File name received: {file.filename}")  # Debug: file name
-#         print(f"File type received: {file_type}")       # Debug: file type
-#         # Determine the type of document (PDF or image)
-#         if file_type == 'application/pdf':
-#             # Process PDF
-#             doc = DocumentFile.from_pdf(file)
-#         elif file_type in ['image/jpeg', 'image/png']:
-#             # Convert the file into a PIL Image
-#             image = Image.open(io.BytesIO(file.read()))
-#             # Pass the PIL Image to DocumentFile.from_images
-#             doc = DocumentFile.from_images([image])
-#         else:
-#             return jsonify({'error': 'Unsupported file type'}), 400
-
-#         # Perform OCR
-#         model = ocr_predictor('db_resnet50', 'crnn_vgg16_bn', pretrained=True)
-#         out = model(doc)
-
-#         # Extracted text output
-#         text_output = out.render()
-#         print("Text extracted successfully")  # Debug: successful OCR
-#         print(text_output)
-
-#         # Reset file pointer to upload the file to Firebase Storage
-#         file.seek(0)
-#         blob = storage.bucket().blob(f"uploads/{file.filename}")
-#         blob.upload_from_file(file)
-#         print("File uploaded to Firebase successfully")  # Debug: successful upload
-
-#         # Mock document ID (replace with actual DB logic)
-#         document_id = "123456789"
-
-#         # Return extracted data along with document ID
-#         return jsonify({
-#             'message': 'File uploaded and data extracted successfully!', 
-#             'document_id': document_id,
-#             'extracted_data': text_output
-#         }), 200
-
-#     except Exception as e:
-#         print(f"An error occurred: {e}")  # Debug: print exception
-#         return jsonify({'error': str(e)}), 500
-
 @app.route('/upload_and_extract', methods=['POST'])
 def upload_and_extract_file():
     try:
